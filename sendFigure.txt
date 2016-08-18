@@ -1,0 +1,37 @@
+/**
+* sends message contatining figure details over to other users
+*/
+public CollaborativeMessageImpl sendFigure(float fromX, float fromY, float toX,
+	        float toY, final String username, String toolType) {
+		String myUsername = this.login.getUsername();
+		if (myUsername != null) {
+			if (this.collabKeys == null) {
+				this.getCollabKeys();
+			}
+
+			final CollaborativeMessageImpl msg = new CollaborativeMessageImpl(
+					new StorageKeyImpl(HashKeyBuilder.getRandomString()),
+					new HeaderImpl(PluginPropertiesContainer.CollaborativeMsg,
+							this.getPluginId(),
+							PluginPropertiesContainer.CollaborativeMsg),
+					new CollaborativeMessageImplPayload(fromX, fromY, toX, toY,
+							myUsername, username, toolType));
+			this.getCollabKeys().addDocumentMsg(username, msg.getPayload());
+			new Thread() {
+				public void run() {
+					messageDispatcher.sendMessage(username, msg, className);
+				}
+			}.start();
+			sdc.listen(c, "NUMBEROFCOLLABORATIVEMESSAGESSENT", className, 1,
+					"sum");
+
+			lastMsgTime = System.currentTimeMillis();
+
+			return msg;
+		}
+
+		this.logger.warning(this.getClass(),
+				PluginPropertiesContainer.NotLoggedInMsg);
+		return null;
+
+	}

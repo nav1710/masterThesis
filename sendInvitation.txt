@@ -1,0 +1,65 @@
+/**
+* Create or subscribe the Collaborative channel Called when a document is
+* created or joined.
+* 
+* @param docuuid
+*/
+public String sendInvitation(List<String> usernames) {
+		// TODO Auto-generated method stub
+		if(this.login==null){
+			System.out.println("nulll");
+		}
+		String myUsername = null;
+		myUsername = this.framework.getNetwork().getUsername();
+		usernames = new ArrayList<String>(usernames);
+		if (myUsername != null) {
+			if (this.collabKeys == null) {
+				this.getCollabKeys();
+			}
+			
+			//channel ID
+			
+			String channeluuid = "NavB";
+			SymmetricKey sym = null;
+			try {
+				sym = new AESSymmetricKey();
+				sym.createKey();
+			} catch (KeyException e) {
+				e.printStackTrace();
+				sym = null;
+			}
+
+			if (sym == null) {
+				return null;
+			}
+			this.getCollabKeys().getPayload().setSymmetricKeyForCollabDocument(
+					channeluuid, sym.getKey());
+
+			this.getCollabKeys().getPayload()
+					.addUserToDocument(channeluuid, myUsername);
+			this.getCollabKeys().getPayload()
+					.createCollabDocumentIfNotExist(channeluuid);
+
+			for (String user : usernames) {
+				user = user.trim().toLowerCase();
+				subscribeDocumentChannel(channeluuid, sym.getKey());
+				publishDocumentSignallingMessages(channeluuid,
+						DocumentChannelMsgPayload.TYPE_ENTERED);
+
+				HashMap<String, Object> data = new HashMap<String, Object>();
+				data.put("users", new ArrayList<String>(usernames));
+				data.put("channeluuid", channeluuid);
+				data.put("key", sym.getKey());
+
+				this.notificationPlugin.sendNotification(user, getPluginId(),
+						data, NotificationPlugin.NOTIFICATION_KIND_NORMAL,
+						NOTIFICATION_DOCUMENT_INVITATION);
+			}
+			lastMsgTime = System.currentTimeMillis();
+			return channeluuid;
+		}
+
+		this.logger.warning(this.getClass(),
+				PluginPropertiesContainer.NotLoggedInMsg);
+		return null;
+	}
